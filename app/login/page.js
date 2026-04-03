@@ -17,7 +17,7 @@ export default async function LoginPage() {
     <main className="auth-screen">
       <div className="auth-glow auth-glow-left" />
       <div className="auth-glow auth-glow-right" />
-      <div className="relative z-10 w-full px-4 sm:px-6">
+      <div className="relative z-10 w-full max-w-md px-4 sm:px-6 mx-auto">
         <AuthForm mode="login" />
       </div>
     </main>

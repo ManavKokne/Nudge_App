@@ -1,13 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function AuthProvider({ children }) {
   const setUser = useAuthStore((state) => state.setUser);
   const clearUser = useAuthStore((state) => state.clearUser);
+  const pathname = usePathname();
 
   useEffect(() => {
+    const isAuthRoute = pathname === "/login" || pathname === "/signup";
+
+    if (isAuthRoute) {
+      clearUser();
+      return;
+    }
+
     let mounted = true;
 
     async function loadSession() {
@@ -41,7 +50,7 @@ export function AuthProvider({ children }) {
     return () => {
       mounted = false;
     };
-  }, [setUser, clearUser]);
+  }, [pathname, setUser, clearUser]);
 
   return children;
 }
