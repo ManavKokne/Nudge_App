@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS posts (
   content TEXT NOT NULL,
   processing_mode TEXT NOT NULL DEFAULT 'mock',
   extracted_location TEXT,
+  extracted_city TEXT,
   extracted_request_type TEXT,
   urgency_score INTEGER,
   urgency_label TEXT,

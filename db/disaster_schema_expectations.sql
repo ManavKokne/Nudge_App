@@ -5,9 +5,10 @@
 -- Required logical fields:
 -- 1) content: one of content | tweet | text | body
 -- 2) location: location
--- 3) request_type: one of request_type | category | type
--- 4) urgency: urgency
--- 5) created_at for 1-hour frequency window: one of created_at | timestamp | inserted_at
+-- 3) city: city (mock frequency scoring now checks city + request_type in last 1 hour)
+-- 4) request_type: one of request_type | category | type
+-- 5) urgency: urgency
+-- 6) created_at for 1-hour frequency window: one of created_at | timestamp | inserted_at
 
 -- Optional but recommended:
 -- urgency_score INTEGER
@@ -19,6 +20,7 @@
 --   id BIGSERIAL PRIMARY KEY,
 --   content TEXT NOT NULL,
 --   location TEXT NOT NULL,
+--   city TEXT,
 --   request_type TEXT NOT NULL,
 --   urgency TEXT NOT NULL CHECK (urgency IN ('urgent', 'non-urgent')),
 --   urgency_score INTEGER,
