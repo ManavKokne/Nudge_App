@@ -1,24 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { MessageCircle, Send, ThumbsDown, ThumbsUp } from "lucide-react";
+import { LoaderCircle, MessageCircle, PencilLine, Send, ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PostCard } from "@/components/feed/post-card";
 
 function initials(email) {
   return email?.slice(0, 2).toUpperCase() || "NU";
 }
 
-export function PostDetailClient({ initialPost, initialComments }) {
+export function PostDetailClient({ initialPost, initialComments, currentUser }) {
+  const router = useRouter();
   const [post, setPost] = useState(initialPost);
   const [comments, setComments] = useState(initialComments || []);
   const [commentText, setCommentText] = useState("");
+  const [editContent, setEditContent] = useState(initialPost?.content || "");
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSavingPost, setIsSavingPost] = useState(false);
+  const [isDeletingPost, setIsDeletingPost] = useState(false);
   const [error, setError] = useState("");
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  const isOwner = currentUser?.id && post?.user_id && currentUser.id === post.user_id;
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   async function handleFeedback(postId, direction) {
     setPost((previous) => ({
@@ -65,9 +79,120 @@ export function PostDetailClient({ initialPost, initialComments }) {
     }
   }
 
+  async function handlePostUpdate() {
+    if (!editContent.trim()) {
+      setError("Post content cannot be empty");
+      return;
+    }
+
+    setError("");
+    setIsSavingPost(true);
+
+    try {
+      const response = await fetch(`/api/posts/${post.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ content: editContent }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Unable to update post");
+      }
+
+      setPost(payload.data.post);
+      setEditContent(payload.data.post.content || editContent);
+      setIsEditing(false);
+      router.refresh();
+    } catch (updateError) {
+      setError(updateError.message || "Unable to update post");
+    } finally {
+      setIsSavingPost(false);
+    }
+  }
+
+  async function handlePostDelete() {
+    const confirmed = window.confirm("Delete this post permanently?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError("");
+    setIsDeletingPost(true);
+
+    try {
+      const response = await fetch(`/api/posts/${post.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Unable to delete post");
+      }
+
+      router.push("/home");
+      router.refresh();
+    } catch (deleteError) {
+      setError(deleteError.message || "Unable to delete post");
+      setIsDeletingPost(false);
+    }
+  }
+
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 pb-10 pt-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
       <div className="space-y-4">
+        {isOwner ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Post Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {isEditing ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editContent}
+                    onChange={(event) => setEditContent(event.target.value)}
+                    maxLength={3000}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" onClick={handlePostUpdate} disabled={isSavingPost}>
+                      {isSavingPost ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <PencilLine className="h-4 w-4" />}
+                      Save Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditContent(post.content || "");
+                        setError("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setIsEditing(true)}>
+                    <PencilLine className="h-4 w-4" />
+                    Edit Post
+                  </Button>
+                  <Button type="button" variant="danger" onClick={handlePostDelete} disabled={isDeletingPost}>
+                    {isDeletingPost ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    Delete Post
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
         <PostCard post={post} onFeedback={handleFeedback} />
 
         <Card>
@@ -101,7 +226,7 @@ export function PostDetailClient({ initialPost, initialComments }) {
                     </Avatar>
                     <span className="font-semibold text-[var(--text)]">{comment.author_email}</span>
                     <span>
-                      {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                      {isHydrated ? formatDistanceToNow(new Date(comment.created_at), { addSuffix: true }) : "just now"}
                     </span>
                   </div>
                   <p className="text-sm leading-relaxed">{comment.content}</p>

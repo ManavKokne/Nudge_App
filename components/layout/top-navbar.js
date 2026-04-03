@@ -135,34 +135,38 @@ export function TopNavbar({ user, onUserUpdate }) {
                 </Avatar>
               </button>
             </DialogTrigger>
-            <DialogContent className="left-auto right-0 top-0 h-screen w-[85vw] max-w-sm translate-x-0 translate-y-0 rounded-none border-l border-[var(--border)] p-6">
+            <DialogContent className="left-auto right-0 top-0 flex h-screen w-[85vw] max-w-sm translate-x-0 translate-y-0 flex-col rounded-none border-l border-[var(--border)] p-6">
               <DialogHeader>
                 <DialogTitle>Account</DialogTitle>
                 <DialogDescription>{localUser?.email}</DialogDescription>
               </DialogHeader>
 
-              <div className="mt-4 space-y-3">
-                <Button variant="secondary" className="w-full justify-start" onClick={() => setIsProfileOpen(true)}>
-                  <UserRound className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Button>
+              <div className="mt-4 flex min-h-0 flex-1 flex-col">
+                <div className="space-y-3">
+                  <Button variant="secondary" className="w-full justify-start" onClick={() => setIsProfileOpen(true)}>
+                    <UserRound className="mr-2 h-4 w-4" />
+                    Edit Profile
+                  </Button>
 
-                <div className="flex items-center justify-between rounded-xl border border-[var(--border)] p-3">
-                  <span className="text-sm font-medium">Dark mode</span>
-                  <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
+                  <div className="flex items-center justify-between rounded-xl border border-[var(--border)] p-3">
+                    <span className="text-sm font-medium">Dark mode</span>
+                    <Switch checked={theme === "dark"} onCheckedChange={toggleTheme} />
+                  </div>
                 </div>
 
-                <Button variant="ghost" className="w-full justify-start text-[var(--danger)]" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </Button>
+                <div className="mt-auto space-y-3 pb-1">
+                  <Button variant="ghost" className="w-full justify-start text-[var(--danger)]" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </Button>
 
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)]/60 p-3 text-xs text-[var(--muted)]">
-                  <div className="mb-1 flex items-center gap-2 font-semibold text-[var(--text)]">
-                    <Settings className="h-3.5 w-3.5" />
-                    Quick note
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--panel)]/60 p-3 text-xs text-[var(--muted)]">
+                    <div className="mb-1 flex items-center gap-2 font-semibold text-[var(--text)]">
+                      <Settings className="h-3.5 w-3.5" />
+                      Quick note
+                    </div>
+                    Theme preference is persisted globally and applies across all pages.
                   </div>
-                  Theme preference is persisted globally and applies across all pages.
                 </div>
               </div>
             </DialogContent>

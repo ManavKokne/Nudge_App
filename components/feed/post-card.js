@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +19,11 @@ function initialFromEmail(email) {
 
 export function PostCard({ post, onFeedback, compact = false }) {
   const isUrgent = post.urgency_score >= 100 || post.urgency_label === "urgent";
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   return (
     <Card className="overflow-hidden">
@@ -31,7 +37,7 @@ export function PostCard({ post, onFeedback, compact = false }) {
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="truncate font-semibold">{post.author_email}</span>
               <span className="text-[var(--muted)]">
-                {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                {isHydrated ? formatDistanceToNow(new Date(post.created_at), { addSuffix: true }) : "just now"}
               </span>
             </div>
             <div className="mt-1 flex flex-wrap gap-2">

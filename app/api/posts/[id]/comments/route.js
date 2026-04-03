@@ -7,7 +7,8 @@ import { createCommentSchema } from "@/lib/validation/content";
 export async function GET(_request, { params }) {
   try {
     await requireApiUser();
-    const comments = await listCommentsByPost(params.id);
+    const { id } = await params;
+    const comments = await listCommentsByPost(id);
     return ok({ comments });
   } catch (error) {
     const status = error?.status || 500;
@@ -18,7 +19,8 @@ export async function GET(_request, { params }) {
 export async function POST(request, { params }) {
   try {
     const user = await requireApiUser();
-    const post = await getPostById(params.id);
+    const { id } = await params;
+    const post = await getPostById(id);
 
     if (!post) {
       return fail("Post not found", 404);
@@ -32,7 +34,7 @@ export async function POST(request, { params }) {
     }
 
     const comment = await createComment({
-      postId: params.id,
+      postId: id,
       userId: user.id,
       content: parsed.data.content,
     });

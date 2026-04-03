@@ -125,7 +125,7 @@ export function FeedClient({ initialPosts }) {
         )}
       </main>
 
-      <aside className="space-y-4">
+      <aside className="hidden lg:block space-y-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Trends For You</CardTitle>

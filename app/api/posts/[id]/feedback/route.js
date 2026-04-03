@@ -7,6 +7,7 @@ import { feedbackSchema } from "@/lib/validation/content";
 export async function POST(request, { params }) {
   try {
     await requireApiUser();
+    const { id } = await params;
 
     const body = await request.json();
     const parsed = feedbackSchema.safeParse(body);
@@ -15,7 +16,7 @@ export async function POST(request, { params }) {
       return fail("Invalid feedback payload", 422, parsed.error.flatten());
     }
 
-    const feedback = await incrementPostFeedback(params.id, parsed.data.direction);
+    const feedback = await incrementPostFeedback(id, parsed.data.direction);
 
     if (!feedback) {
       return fail("Post not found", 404);

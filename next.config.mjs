@@ -2,6 +2,7 @@
 const nextConfig = {
   /* config options here */
   reactCompiler: true,
+  allowedDevOrigins: ["unroweled-lakiesha-purely.ngrok-free.dev"],
 };
 
 export default nextConfig;
