@@ -65,9 +65,9 @@ export async function PATCH(request, { params }) {
     const processingMode = resolveProcessingMode(existingPost);
 
     if (processingMode === "mock") {
-      const { location, requestType, alertContent } = extractStructuredEntities(nextContent);
+      const { location, city, requestType, alertContent } = extractStructuredEntities(nextContent);
       const similarCountWithinHour = await countSimilarAlerts({
-        location,
+        city,
         requestType,
         excludeSourcePostId: id,
       });
@@ -78,6 +78,7 @@ export async function PATCH(request, { params }) {
         sourcePostId: id,
         content: alertContent || nextContent,
         location,
+        city,
         requestType,
         dashboardUrgency,
         urgencyScore,
@@ -91,6 +92,7 @@ export async function PATCH(request, { params }) {
 
       await updatePostProcessingMeta(id, {
         location,
+        city,
         requestType,
         urgencyScore,
         urgencyLabel,
