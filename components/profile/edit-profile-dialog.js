@@ -100,7 +100,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onUpdated }) {
                   type="button"
                   onClick={() => setAvatarUrl(option)}
                   className={cn(
-                    "relative overflow-hidden rounded-xl border p-1 transition",
+                    "relative rounded-xl border p-1 transition",
                     isSelected
                       ? "border-[var(--accent)] bg-[var(--accent)]/10"
                       : "border-[var(--border)] hover:border-[var(--accent)]/50"
@@ -108,7 +108,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onUpdated }) {
                 >
                   <Image src={option} alt={option} width={72} height={72} className="h-16 w-16 rounded-lg" />
                   {isSelected ? (
-                    <span className="absolute -right-1 -top-1 rounded-full bg-[var(--accent)] p-1 text-white">
+                    <span className="pointer-events-none absolute right-1 top-1 z-20 rounded-full bg-[var(--accent)] p-1 text-white shadow-md">
                       <Check className="h-3 w-3" />
                     </span>
                   ) : null}
