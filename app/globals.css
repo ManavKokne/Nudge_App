@@ -1,26 +1,87 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f5ebe2;
+  --surface: #fffdf9;
+  --panel: #f1e6db;
+  --panel-strong: #e7d7c8;
+  --text: #241d19;
+  --muted: #7f6e62;
+  --border: #dfcfc0;
+  --accent: #ff5f2c;
+  --accent-strong: #e24616;
+  --danger: #d82626;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-space-grotesk);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --bg: #15171b;
+  --surface: #1c1f25;
+  --panel: #262a32;
+  --panel-strong: #2d323b;
+  --text: #e9e6e2;
+  --muted: #a29c93;
+  --border: #363a45;
+  --accent: #ff7b49;
+  --accent-strong: #ff9f78;
+  --danger: #f87171;
+}
+
+* {
+  border-color: var(--border);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  background-color: var(--bg);
+  color: var(--text);
+  background-image:
+    radial-gradient(circle at 15% 20%, color-mix(in oklab, var(--accent) 20%, transparent), transparent 32%),
+    radial-gradient(circle at 82% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 38%),
+    linear-gradient(120deg, color-mix(in oklab, var(--bg) 88%, white), var(--bg));
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-sora), var(--font-space-grotesk), sans-serif;
+}
+
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.auth-glow-left {
+  width: 340px;
+  height: 340px;
+  left: -70px;
+  top: 10%;
+  background: color-mix(in oklab, var(--accent) 40%, transparent);
+}
+
+.auth-glow-right {
+  width: 280px;
+  height: 280px;
+  right: -40px;
+  bottom: 8%;
+  background: color-mix(in oklab, var(--panel-strong) 75%, transparent);
 }
