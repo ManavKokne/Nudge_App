@@ -1,12 +1,12 @@
 import { requireApiUser } from "@/lib/auth/guards";
-import { incrementPostFeedback } from "@/lib/db/social-queries";
+import { setPostFeedback } from "@/lib/db/social-queries";
 import { fail, ok } from "@/lib/http/response";
 import { formatApiError } from "@/lib/utils";
 import { feedbackSchema } from "@/lib/validation/content";
 
 export async function POST(request, { params }) {
   try {
-    await requireApiUser();
+    const user = await requireApiUser();
     const { id } = await params;
 
     const body = await request.json();
@@ -16,7 +16,11 @@ export async function POST(request, { params }) {
       return fail("Invalid feedback payload", 422, parsed.error.flatten());
     }
 
-    const feedback = await incrementPostFeedback(id, parsed.data.direction);
+    const feedback = await setPostFeedback({
+      postId: id,
+      userId: user.id,
+      direction: parsed.data.direction,
+    });
 
     if (!feedback) {
       return fail("Post not found", 404);

@@ -14,12 +14,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { cn, deriveNameFromEmail } from "@/lib/utils";
 
 const FALLBACK_AVATAR_COUNT = 8;
 
 export function EditProfileDialog({ open, onOpenChange, user, onUpdated }) {
-  const [email, setEmail] = useState(user?.email || "");
+  const [name, setName] = useState(user?.name || deriveNameFromEmail(user?.email));
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || "/avatar/av_1.png");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -35,7 +35,7 @@ export function EditProfileDialog({ open, onOpenChange, user, onUpdated }) {
       return;
     }
 
-    setEmail(user?.email || "");
+    setName(user?.name || deriveNameFromEmail(user?.email));
     setAvatarUrl(user?.avatarUrl || "/avatar/av_1.png");
     setError("");
   }, [open, user]);
@@ -44,12 +44,20 @@ export function EditProfileDialog({ open, onOpenChange, user, onUpdated }) {
     setError("");
     setIsSaving(true);
 
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      setError("Name is required");
+      setIsSaving(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, avatarUrl }),
+        body: JSON.stringify({ name: trimmedName, avatarUrl }),
       });
 
       const payload = await response.json();
@@ -78,13 +86,25 @@ export function EditProfileDialog({ open, onOpenChange, user, onUpdated }) {
         </DialogHeader>
 
         <div className="space-y-3">
+          <Label htmlFor="edit-name">Name</Label>
+          <Input
+            id="edit-name"
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Your display name"
+            maxLength={60}
+          />
+        </div>
+
+        <div className="space-y-3">
           <Label htmlFor="edit-email">Email</Label>
           <Input
             id="edit-email"
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
+            value={user?.email || ""}
+            readOnly
+            disabled
           />
         </div>
 
@@ -100,13 +120,15 @@ export function EditProfileDialog({ open, onOpenChange, user, onUpdated }) {
                   type="button"
                   onClick={() => setAvatarUrl(option)}
                   className={cn(
-                    "relative rounded-xl border p-1 transition",
+                    "relative aspect-square rounded-xl border p-1 transition",
                     isSelected
                       ? "border-[var(--accent)] bg-[var(--accent)]/10"
                       : "border-[var(--border)] hover:border-[var(--accent)]/50"
                   )}
                 >
-                  <Image src={option} alt={option} width={72} height={72} className="h-16 w-16 rounded-lg" />
+                  <div className="h-full w-full overflow-hidden rounded-lg">
+                    <Image src={option} alt={option} width={96} height={96} className="h-full w-full object-cover" />
+                  </div>
                   {isSelected ? (
                     <span className="pointer-events-none absolute right-1 top-1 z-20 rounded-full bg-[var(--accent)] p-1 text-white shadow-md">
                       <Check className="h-3 w-3" />

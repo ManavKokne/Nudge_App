@@ -9,7 +9,7 @@ export async function generateMetadata({ params }) {
   const post = await getPostById(id);
 
   return {
-    title: post ? `Nudge | ${post.author_email}` : "Nudge | Post",
+    title: post ? `Nudge | ${post.author_name || post.author_email}` : "Nudge | Post",
   };
 }
 

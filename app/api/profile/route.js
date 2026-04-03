@@ -1,8 +1,8 @@
 import { requireApiUser } from "@/lib/auth/guards";
 import { setSessionCookie } from "@/lib/auth/session";
-import { findUserByEmail, updateUserProfile } from "@/lib/db/social-queries";
+import { updateUserProfile } from "@/lib/db/social-queries";
 import { fail, ok } from "@/lib/http/response";
-import { formatApiError } from "@/lib/utils";
+import { deriveNameFromEmail, formatApiError } from "@/lib/utils";
 import { updateProfileSchema } from "@/lib/validation/auth";
 
 export async function PUT(request) {
@@ -15,18 +15,11 @@ export async function PUT(request) {
       return fail("Invalid profile payload", 422, parsed.error.flatten());
     }
 
-    const { email, avatarUrl } = parsed.data;
-
-    if (email) {
-      const existing = await findUserByEmail(email);
-
-      if (existing && existing.id !== currentUser.id) {
-        return fail("Email is already used by another account", 409);
-      }
-    }
+    const { name, avatarUrl } = parsed.data;
+    const nextName = name?.trim();
 
     const updatedUser = await updateUserProfile(currentUser.id, {
-      email,
+      name: nextName,
       avatarUrl,
     });
 
@@ -34,8 +27,11 @@ export async function PUT(request) {
       return fail("Unable to update profile", 404);
     }
 
+    const resolvedName = updatedUser.name || deriveNameFromEmail(updatedUser.email);
+
     await setSessionCookie({
       id: updatedUser.id,
+      name: resolvedName,
       email: updatedUser.email,
       avatarUrl: updatedUser.avatar_url,
     });
@@ -43,6 +39,7 @@ export async function PUT(request) {
     return ok({
       user: {
         id: updatedUser.id,
+        name: resolvedName,
         email: updatedUser.email,
         avatarUrl: updatedUser.avatar_url,
       },

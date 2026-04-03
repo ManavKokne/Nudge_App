@@ -9,17 +9,26 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-function initialFromEmail(email) {
-  if (!email) {
+function initialFromAuthor(name, email) {
+  const source = name?.trim() || email?.split("@")[0]?.trim();
+
+  if (!source) {
     return "NU";
   }
 
-  return email.slice(0, 2).toUpperCase();
+  const parts = source.split(/[\s._-]+/).filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+
+  return source.slice(0, 2).toUpperCase();
 }
 
 export function PostCard({ post, onFeedback, compact = false }) {
   const isUrgent = post.urgency_score >= 100 || post.urgency_label === "urgent";
   const [isHydrated, setIsHydrated] = useState(false);
+  const authorName = post.author_name || post.author_email;
 
   useEffect(() => {
     setIsHydrated(true);
@@ -30,12 +39,12 @@ export function PostCard({ post, onFeedback, compact = false }) {
       <CardContent className="p-4">
         <div className="mb-3 flex items-start gap-3">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={post.author_avatar || "/avatar/av_1.png"} alt={post.author_email} />
-            <AvatarFallback>{initialFromEmail(post.author_email)}</AvatarFallback>
+            <AvatarImage src={post.author_avatar || "/avatar/av_1.png"} alt={authorName} />
+            <AvatarFallback>{initialFromAuthor(post.author_name, post.author_email)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="truncate font-semibold">{post.author_email}</span>
+              <span className="truncate font-semibold">{authorName}</span>
               <span className="text-[var(--muted)]">
                 {isHydrated ? formatDistanceToNow(new Date(post.created_at), { addSuffix: true }) : "just now"}
               </span>

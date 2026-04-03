@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { ok, fail } from "@/lib/http/response";
 import { loginSchema } from "@/lib/validation/auth";
 import { findUserByEmail } from "@/lib/db/social-queries";
-import { formatApiError } from "@/lib/utils";
+import { deriveNameFromEmail, formatApiError } from "@/lib/utils";
 import { setSessionCookie } from "@/lib/auth/session";
 
 export async function POST(request) {
@@ -27,8 +27,11 @@ export async function POST(request) {
       return fail("Invalid email or password", 401);
     }
 
+    const name = user.name || deriveNameFromEmail(user.email);
+
     await setSessionCookie({
       id: user.id,
+      name,
       email: user.email,
       avatarUrl: user.avatar_url,
     });
@@ -36,6 +39,7 @@ export async function POST(request) {
     return ok({
       user: {
         id: user.id,
+        name,
         email: user.email,
         avatarUrl: user.avatar_url,
       },

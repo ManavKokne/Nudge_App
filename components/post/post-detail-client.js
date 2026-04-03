@@ -12,8 +12,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PostCard } from "@/components/feed/post-card";
 
-function initials(email) {
-  return email?.slice(0, 2).toUpperCase() || "NU";
+function initials(name, email) {
+  const source = name?.trim() || email?.split("@")[0]?.trim();
+
+  if (!source) {
+    return "NU";
+  }
+
+  const parts = source.split(/[\s._-]+/).filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+
+  return source.slice(0, 2).toUpperCase();
 }
 
 export function PostDetailClient({ initialPost, initialComments, currentUser }) {
@@ -35,18 +47,33 @@ export function PostDetailClient({ initialPost, initialComments, currentUser }) 
   }, []);
 
   async function handleFeedback(postId, direction) {
-    setPost((previous) => ({
-      ...previous,
-      upvotes: direction === "up" ? (previous.upvotes || 0) + 1 : previous.upvotes,
-      downvotes: direction === "down" ? (previous.downvotes || 0) + 1 : previous.downvotes,
-    }));
+    setError("");
 
-    await fetch(`/api/posts/${postId}/feedback`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ direction }),
-    });
+    try {
+      const response = await fetch(`/api/posts/${postId}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ direction }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.success || !payload?.data?.feedback) {
+        throw new Error(payload?.error || "Unable to submit feedback");
+      }
+
+      const feedback = payload.data.feedback;
+
+      setPost((previous) => ({
+        ...previous,
+        upvotes: feedback.upvotes,
+        downvotes: feedback.downvotes,
+        my_feedback: feedback.direction,
+      }));
+    } catch (feedbackError) {
+      setError(feedbackError.message || "Unable to submit feedback");
+    }
   }
 
   async function handleCommentSubmit(event) {
@@ -221,10 +248,13 @@ export function PostDetailClient({ initialPost, initialComments, currentUser }) 
                 <div key={comment.id} className="rounded-xl border border-[var(--border)] p-3">
                   <div className="mb-2 flex items-center gap-2 text-xs text-[var(--muted)]">
                     <Avatar className="h-7 w-7">
-                      <AvatarImage src={comment.author_avatar || "/avatar/av_1.png"} alt={comment.author_email} />
-                      <AvatarFallback>{initials(comment.author_email)}</AvatarFallback>
+                      <AvatarImage
+                        src={comment.author_avatar || "/avatar/av_1.png"}
+                        alt={comment.author_name || comment.author_email}
+                      />
+                      <AvatarFallback>{initials(comment.author_name, comment.author_email)}</AvatarFallback>
                     </Avatar>
-                    <span className="font-semibold text-[var(--text)]">{comment.author_email}</span>
+                    <span className="font-semibold text-[var(--text)]">{comment.author_name || comment.author_email}</span>
                     <span>
                       {isHydrated ? formatDistanceToNow(new Date(comment.created_at), { addSuffix: true }) : "just now"}
                     </span>

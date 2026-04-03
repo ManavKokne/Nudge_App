@@ -1,7 +1,7 @@
 import { requireApiUser } from "@/lib/auth/guards";
 import { createComment, getPostById, listCommentsByPost } from "@/lib/db/social-queries";
 import { fail, ok } from "@/lib/http/response";
-import { formatApiError } from "@/lib/utils";
+import { deriveNameFromEmail, formatApiError } from "@/lib/utils";
 import { createCommentSchema } from "@/lib/validation/content";
 
 export async function GET(_request, { params }) {
@@ -41,6 +41,7 @@ export async function POST(request, { params }) {
 
     const enriched = {
       ...comment,
+      author_name: user.name || deriveNameFromEmail(user.email),
       author_email: user.email,
       author_avatar: user.avatarUrl,
     };

@@ -3,7 +3,7 @@ import { AVATAR_COUNT, DEFAULT_AVATAR } from "@/lib/constants";
 import { ok, fail } from "@/lib/http/response";
 import { signupSchema } from "@/lib/validation/auth";
 import { createUser, findUserByEmail } from "@/lib/db/social-queries";
-import { formatApiError } from "@/lib/utils";
+import { deriveNameFromEmail, formatApiError } from "@/lib/utils";
 import { setSessionCookie } from "@/lib/auth/session";
 
 function getRandomAvatar() {
@@ -29,8 +29,10 @@ export async function POST(request) {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const avatarUrl = getRandomAvatar() || DEFAULT_AVATAR;
+    const name = deriveNameFromEmail(email);
 
     const user = await createUser({
+      name,
       email,
       passwordHash,
       avatarUrl,
@@ -38,6 +40,7 @@ export async function POST(request) {
 
     await setSessionCookie({
       id: user.id,
+      name: user.name,
       email: user.email,
       avatarUrl: user.avatar_url,
     });
@@ -46,6 +49,7 @@ export async function POST(request) {
       {
         user: {
           id: user.id,
+          name: user.name,
           email: user.email,
           avatarUrl: user.avatar_url,
         },

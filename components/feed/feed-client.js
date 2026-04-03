@@ -8,12 +8,20 @@ import { CreatePostDialog } from "@/components/feed/create-post-dialog";
 import { PostCard } from "@/components/feed/post-card";
 
 async function requestFeedback(postId, direction) {
-  await fetch(`/api/posts/${postId}/feedback`, {
+  const response = await fetch(`/api/posts/${postId}/feedback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify({ direction }),
   });
+
+  const payload = await response.json();
+
+  if (!response.ok || !payload?.success || !payload?.data?.feedback) {
+    throw new Error(payload?.error || "Could not persist feedback right now. Please refresh.");
+  }
+
+  return payload.data.feedback;
 }
 
 export function FeedClient({ initialPosts }) {
@@ -47,24 +55,25 @@ export function FeedClient({ initialPosts }) {
   }
 
   async function handleFeedback(postId, direction) {
-    setPosts((previous) =>
-      previous.map((post) => {
-        if (post.id !== postId) {
-          return post;
-        }
-
-        return {
-          ...post,
-          upvotes: direction === "up" ? (post.upvotes || 0) + 1 : post.upvotes,
-          downvotes: direction === "down" ? (post.downvotes || 0) + 1 : post.downvotes,
-        };
-      })
-    );
-
     try {
-      await requestFeedback(postId, direction);
-    } catch {
-      setProcessingHint("Could not persist feedback right now. Please refresh.");
+      const feedback = await requestFeedback(postId, direction);
+
+      setPosts((previous) =>
+        previous.map((post) => {
+          if (post.id !== postId) {
+            return post;
+          }
+
+          return {
+            ...post,
+            upvotes: feedback.upvotes,
+            downvotes: feedback.downvotes,
+            my_feedback: feedback.direction,
+          };
+        })
+      );
+    } catch (feedbackError) {
+      setProcessingHint(feedbackError.message || "Could not persist feedback right now. Please refresh.");
     }
   }
 

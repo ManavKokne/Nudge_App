@@ -1,7 +1,7 @@
 import { getSessionUser, setSessionCookie } from "@/lib/auth/session";
 import { findUserById } from "@/lib/db/social-queries";
 import { fail, ok } from "@/lib/http/response";
-import { formatApiError } from "@/lib/utils";
+import { deriveNameFromEmail, formatApiError } from "@/lib/utils";
 
 export async function GET() {
   try {
@@ -17,8 +17,11 @@ export async function GET() {
       return fail("Unauthorized", 401);
     }
 
+    const name = latestUser.name || deriveNameFromEmail(latestUser.email);
+
     await setSessionCookie({
       id: latestUser.id,
+      name,
       email: latestUser.email,
       avatarUrl: latestUser.avatar_url,
     });
@@ -26,6 +29,7 @@ export async function GET() {
     return ok({
       user: {
         id: latestUser.id,
+        name,
         email: latestUser.email,
         avatarUrl: latestUser.avatar_url,
       },

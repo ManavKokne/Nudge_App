@@ -26,7 +26,18 @@ import { Switch } from "@/components/ui/switch";
 import { useThemeStore } from "@/stores/theme-store";
 import { EditProfileDialog } from "@/components/profile/edit-profile-dialog";
 
-function buildFallback(email) {
+function buildFallback(name, email) {
+  if (name?.trim()) {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length) {
+      return parts
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join("");
+    }
+  }
+
   if (!email) {
     return "NU";
   }
@@ -51,7 +62,7 @@ export function TopNavbar({ user, onUserUpdate }) {
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
 
-  const fallback = useMemo(() => buildFallback(localUser?.email), [localUser?.email]);
+  const fallback = useMemo(() => buildFallback(localUser?.name, localUser?.email), [localUser?.name, localUser?.email]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", {
@@ -102,7 +113,8 @@ export function TopNavbar({ user, onUserUpdate }) {
             <DropdownMenuContent align="end" className="w-72">
               <DropdownMenuLabel className="space-y-1">
                 <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">Signed in as</p>
-                <p className="truncate text-sm font-semibold">{localUser?.email}</p>
+                <p className="truncate text-sm font-semibold">{localUser?.name || "User"}</p>
+                <p className="truncate text-xs text-[var(--muted)]">{localUser?.email}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setIsProfileOpen(true)}>
