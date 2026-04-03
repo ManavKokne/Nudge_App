@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreatePostDialog } from "@/components/feed/create-post-dialog";
 import { PostCard } from "@/components/feed/post-card";
+import { SosAlertButton } from "@/components/feed/sos-alert-button";
 
 async function requestFeedback(postId, direction) {
   const response = await fetch(`/api/posts/${postId}/feedback`, {
@@ -52,6 +53,14 @@ export function FeedClient({ initialPosts }) {
     if (processing?.mode === "ml") {
       setProcessingHint("ML mode active: raw post stored for asynchronous ML pipeline ingestion.");
     }
+  }
+
+  function handleSosSubmitted(data) {
+    if (data?.post) {
+      setPosts((previous) => [data.post, ...previous]);
+    }
+
+    setProcessingHint(data?.message || "Emergency SOS alert submitted successfully.");
   }
 
   async function handleFeedback(postId, direction) {
@@ -109,7 +118,10 @@ export function FeedClient({ initialPosts }) {
               Twitter x Reddit inspired signal board for disaster request ingestion.
             </p>
           </div>
-          <CreatePostDialog onCreated={handleCreated} />
+          <div className="ml-auto flex items-center gap-2">
+            <CreatePostDialog onCreated={handleCreated} />
+            <SosAlertButton onSubmitted={handleSosSubmitted} />
+          </div>
         </div>
 
         {processingHint ? (
