@@ -127,7 +127,13 @@ export function EditProfileDialog({ open, onOpenChange, user, onUpdated }) {
                   )}
                 >
                   <div className="h-full w-full overflow-hidden rounded-lg">
-                    <Image src={option} alt={option} width={96} height={96} className="h-full w-full object-cover" />
+                    <Image
+                      src={option}
+                      alt={option}
+                      width={96}
+                      height={96}
+                      className="h-full w-full scale-110 object-cover object-center"
+                    />
                   </div>
                   {isSelected ? (
                     <span className="pointer-events-none absolute right-1 top-1 z-20 rounded-full bg-[var(--accent)] p-1 text-white shadow-md">

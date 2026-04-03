@@ -118,9 +118,9 @@ export function FeedClient({ initialPosts }) {
               Twitter x Reddit inspired signal board for disaster request ingestion.
             </p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <CreatePostDialog onCreated={handleCreated} />
-            <SosAlertButton onSubmitted={handleSosSubmitted} />
+          <div className="ml-auto grid w-full max-w-md grid-cols-2 gap-2 lg:flex lg:w-auto lg:max-w-none">
+            <CreatePostDialog onCreated={handleCreated} triggerClassName="w-full justify-center lg:w-auto" />
+            <SosAlertButton onSubmitted={handleSosSubmitted} triggerClassName="w-full justify-center lg:w-auto" />
           </div>
         </div>
 

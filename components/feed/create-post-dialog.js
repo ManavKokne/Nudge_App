@@ -14,8 +14,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
-export function CreatePostDialog({ onCreated }) {
+export function CreatePostDialog({ onCreated, triggerClassName }) {
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
@@ -52,7 +53,7 @@ export function CreatePostDialog({ onCreated }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="rounded-full px-5">
+        <Button className={cn("rounded-full px-5", triggerClassName)}>
           <Plus className="mr-1 h-4 w-4" />
           Create Post
         </Button>

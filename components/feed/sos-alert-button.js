@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function getCurrentPosition() {
   return new Promise((resolve, reject) => {
@@ -61,7 +62,7 @@ async function reverseGeocode(latitude, longitude) {
   };
 }
 
-export function SosAlertButton({ onSubmitted }) {
+export function SosAlertButton({ onSubmitted, triggerClassName }) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -140,7 +141,10 @@ export function SosAlertButton({ onSubmitted }) {
         <Button
           type="button"
           variant="danger"
-          className="rounded-full px-4 text-white shadow-[0_0_0_2px_rgba(255,255,255,0.08)] animate-pulse lg:hidden"
+          className={cn(
+            "rounded-full px-5 text-white shadow-[0_0_0_2px_rgba(255,255,255,0.08)] animate-pulse lg:hidden",
+            triggerClassName
+          )}
           aria-label="Send SOS emergency alert"
         >
           <Siren className="mr-1 h-4 w-4" />
