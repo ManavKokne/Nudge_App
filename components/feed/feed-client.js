@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreatePostDialog } from "@/components/feed/create-post-dialog";
 import { PostCard } from "@/components/feed/post-card";
 import { SosAlertButton } from "@/components/feed/sos-alert-button";
+import { normalizeUrgencyLabel } from "@/lib/utils";
 
 async function requestFeedback(postId, direction) {
   const response = await fetch(`/api/posts/${postId}/feedback`, {
@@ -45,7 +46,7 @@ export function FeedClient({ initialPosts }) {
 
     if (processing?.mode === "mock") {
       setProcessingHint(
-        `Mock pipeline: ${processing.location} | ${processing.requestType} | score ${processing.urgencyScore} (${processing.urgencyLabel}).`
+        `Mock pipeline: ${processing.location} | ${processing.requestType} | score ${processing.urgencyScore} (${normalizeUrgencyLabel(processing.urgencyLabel)}).`
       );
       return;
     }
@@ -89,25 +90,32 @@ export function FeedClient({ initialPosts }) {
   return (
     <div className="mx-auto grid w-full max-w-7xl gap-4 px-4 pb-10 pt-5 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)_300px] lg:px-8">
       <aside className="hidden lg:block">
-        <Card className="sticky top-24">
-          <CardHeader>
-            <CardTitle className="text-base">Signal Lens</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-            <div className="flex items-center gap-2">
-              <Radar className="h-4 w-4 text-[var(--accent)]" />
-              Community ingestion stream is live.
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPinned className="h-4 w-4 text-[var(--accent)]" />
-              Location-tagged alerts feed dashboard analytics.
-            </div>
-            <div className="flex items-center gap-2">
-              <Flame className="h-4 w-4 text-[var(--danger)]" />
-              {totals.urgent} urgent, {totals.potential} escalated posts.
-            </div>
-          </CardContent>
-        </Card>
+        <div className="sticky top-24 space-y-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Signal Lens</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+              <div className="flex items-center gap-2">
+                <Radar className="h-4 w-4 text-[var(--accent)]" />
+                Community ingestion stream is live.
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPinned className="h-4 w-4 text-[var(--accent)]" />
+                Location-tagged alerts feed dashboard analytics.
+              </div>
+              <div className="flex items-center gap-2">
+                <Flame className="h-4 w-4 text-[var(--danger)]" />
+                {totals.urgent} urgent, {totals.potential} escalated posts.
+              </div>
+            </CardContent>
+          </Card>
+
+          <SosAlertButton
+            onSubmitted={handleSosSubmitted}
+            triggerClassName="hidden w-full justify-center lg:flex lg:w-full"
+          />
+        </div>
       </aside>
 
       <main className="space-y-4">
@@ -167,7 +175,7 @@ export function FeedClient({ initialPosts }) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="sticky top-24">
           <CardHeader>
             <CardTitle className="text-base">Score Legend</CardTitle>
           </CardHeader>

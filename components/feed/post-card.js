@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { normalizeUrgencyLabel } from "@/lib/utils";
 
 function initialFromAuthor(name, email) {
   const source = name?.trim() || email?.split("@")[0]?.trim();
@@ -26,7 +27,8 @@ function initialFromAuthor(name, email) {
 }
 
 export function PostCard({ post, onFeedback, compact = false }) {
-  const isUrgent = post.urgency_score >= 100 || post.urgency_label === "urgent";
+  const urgencyLabel = normalizeUrgencyLabel(post.urgency_label);
+  const isUrgent = post.urgency_score >= 100 || urgencyLabel === "urgent";
   const [isHydrated, setIsHydrated] = useState(false);
   const authorName = post.author_name || post.author_email;
 
@@ -50,9 +52,10 @@ export function PostCard({ post, onFeedback, compact = false }) {
               </span>
             </div>
             <div className="mt-1 flex flex-wrap gap-2">
-              <Badge variant={isUrgent ? "urgent" : "default"}>{post.urgency_label || "non-urgent"}</Badge>
+              <Badge variant={isUrgent ? "urgent" : "default"}>{urgencyLabel}</Badge>
               {post.extracted_request_type ? <Badge variant="accent">{post.extracted_request_type}</Badge> : null}
               {post.extracted_location ? <Badge>{post.extracted_location}</Badge> : null}
+              {post.phone_number ? <Badge>Contact: {post.phone_number}</Badge> : null}
             </div>
           </div>
         </div>

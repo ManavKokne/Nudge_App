@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { requireApiUser } from "@/lib/auth/guards";
-import { PROCESSING_MODE } from "@/lib/constants";
+import { PROCESSING_MODE, SOS_REQUEST_TYPE_OPTIONS } from "@/lib/constants";
 import { insertAlertFromPost } from "@/lib/db/disaster-queries";
 import {
   createPost,
@@ -10,10 +10,10 @@ import {
 } from "@/lib/db/social-queries";
 import { fail, ok } from "@/lib/http/response";
 import { deriveNameFromEmail, extractCityFromLocationString, formatApiError } from "@/lib/utils";
+import { phoneNumberSchema } from "@/lib/validation/content";
 
 const SOS_COOLDOWN_MIN_SECONDS = 120;
 const SOS_COOLDOWN_MAX_SECONDS = 300;
-const SOS_REQUEST_TYPE = "Emergency";
 const SOS_URGENCY_SCORE = 100;
 const SOS_URGENCY_LABEL = "urgent";
 
@@ -33,8 +33,15 @@ const sosPayloadSchema = z
   .object({
     latitude: z.coerce.number().finite().min(-90).max(90).optional(),
     longitude: z.coerce.number().finite().min(-180).max(180).optional(),
-    location: z.string().trim().max(500).optional(),
+    location: z
+      .string()
+      .trim()
+      .min(2, "Location is required")
+      .max(500, "Location is too long")
+      .refine((value) => !/location unavailable/i.test(value), "Please provide a valid location"),
     city: z.string().trim().max(120).optional(),
+    requestType: z.enum(SOS_REQUEST_TYPE_OPTIONS),
+    phoneNumber: phoneNumberSchema,
   })
   .refine(
     (value) =>
@@ -59,7 +66,7 @@ function resolveLocationLabel({ location, latitude, longitude }) {
     return `${formatCoordinate(latitude)}, ${formatCoordinate(longitude)}`;
   }
 
-  return "location unavailable";
+  return "";
 }
 
 export async function POST(request) {
@@ -87,6 +94,8 @@ export async function POST(request) {
     }
 
     const processingMode = (process.env.PROCESSING_MODE || PROCESSING_MODE || "mock").toLowerCase() === "ml" ? "ml" : "mock";
+    const requestType = parsed.data.requestType;
+    const phoneNumber = parsed.data.phoneNumber;
 
     const displayName = user.name || deriveNameFromEmail(user.email);
     const locationLabel = resolveLocationLabel(parsed.data);
@@ -97,18 +106,19 @@ export async function POST(request) {
 
     const city = parsed.data.city?.trim() || extractCityFromLocationString(locationLabel);
 
-    const content = `SOS Alert: ${displayName} requires immediate assistance at ${locationLabel}. Coordinates: ${coordinatesLabel}.`;
+    const content = `SOS Alert: ${displayName} requires immediate assistance at ${locationLabel}. Request: ${requestType}. Contact: ${phoneNumber}. Coordinates: ${coordinatesLabel}.`;
 
     const createdPost = await createPost({
       userId: user.id,
       content,
       processingMode,
+      phoneNumber,
     });
 
     await updatePostProcessingMeta(createdPost.id, {
       location: locationLabel,
       city,
-      requestType: SOS_REQUEST_TYPE,
+      requestType,
       urgencyScore: SOS_URGENCY_SCORE,
       urgencyLabel: SOS_URGENCY_LABEL,
     });
@@ -120,7 +130,7 @@ export async function POST(request) {
         content,
         location: locationLabel,
         city,
-        requestType: SOS_REQUEST_TYPE,
+        requestType,
         dashboardUrgency: SOS_URGENCY_LABEL,
         urgencyScore: SOS_URGENCY_SCORE,
         urgencyLabel: SOS_URGENCY_LABEL,
@@ -137,7 +147,8 @@ export async function POST(request) {
           mode: processingMode,
           location: locationLabel,
           city,
-          requestType: SOS_REQUEST_TYPE,
+          requestType,
+          phoneNumber,
           urgencyScore: SOS_URGENCY_SCORE,
           urgencyLabel: SOS_URGENCY_LABEL,
           insertedAlert,

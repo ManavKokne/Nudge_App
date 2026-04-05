@@ -27,11 +27,13 @@ export async function POST(request) {
     }
 
     const processingMode = (process.env.PROCESSING_MODE || "mock").toLowerCase();
+    const phoneNumber = parsed.data.phoneNumber?.trim() || undefined;
 
     const post = await createPost({
       userId: user.id,
       content: parsed.data.content,
       processingMode,
+      phoneNumber,
     });
 
     let processing = null;

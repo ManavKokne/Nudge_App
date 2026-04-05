@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS posts (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   processing_mode TEXT NOT NULL DEFAULT 'mock',
+  status TEXT NOT NULL CHECK (status IN ('pending', 'done')),
+  phone_number TEXT,
   extracted_location TEXT,
   extracted_city TEXT,
   extracted_request_type TEXT,
