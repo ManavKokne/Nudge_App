@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PostCard } from "@/components/feed/post-card";
+import { normalizeUrgencyLabel } from "@/lib/utils";
 
 function initials(name, email) {
   const source = name?.trim() || email?.split("@")[0]?.trim();
@@ -39,6 +40,7 @@ export function PostDetailClient({ initialPost, initialComments, currentUser }) 
   const [isDeletingPost, setIsDeletingPost] = useState(false);
   const [error, setError] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
+  const urgencyLabel = normalizeUrgencyLabel(post.urgency_label);
 
   const isOwner = currentUser?.id && post?.user_id && currentUser.id === post.user_id;
 
@@ -278,7 +280,7 @@ export function PostDetailClient({ initialPost, initialComments, currentUser }) 
             <div className="flex items-center justify-between">
               <span>Label</span>
               <Badge variant={post.urgency_score >= 100 ? "urgent" : "default"}>
-                {post.urgency_label || "non-urgent"}
+                {urgencyLabel}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
@@ -288,6 +290,14 @@ export function PostDetailClient({ initialPost, initialComments, currentUser }) 
             <div className="flex items-center justify-between">
               <span>Request Type</span>
               <Badge variant="accent">{post.extracted_request_type || "General"}</Badge>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span>Location</span>
+              <span className="text-right text-xs text-[var(--muted)]">{post.extracted_location || "Unknown"}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span>Contact</span>
+              <span className="text-right text-xs text-[var(--muted)]">{post.phone_number || "Not provided"}</span>
             </div>
             <div className="rounded-xl bg-[var(--panel)] p-3 text-xs text-[var(--muted)]">
               In dashboard compatibility mode, only score 100 maps to urgent. Scores below 100 map to non-urgent.

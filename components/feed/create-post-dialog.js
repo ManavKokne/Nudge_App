@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 export function CreatePostDialog({ onCreated, triggerClassName }) {
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,7 +33,10 @@ export function CreatePostDialog({ onCreated, triggerClassName }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({
+          content,
+          ...(phoneNumber.trim() ? { phoneNumber: phoneNumber.trim() } : {}),
+        }),
       });
 
       const payload = await response.json();
@@ -42,6 +47,7 @@ export function CreatePostDialog({ onCreated, triggerClassName }) {
 
       onCreated?.(payload.data.post, payload.data.processing, payload.data.processingError);
       setContent("");
+      setPhoneNumber("");
       setOpen(false);
     } catch (createError) {
       setError(createError.message || "Unable to create post");
@@ -76,6 +82,18 @@ export function CreatePostDialog({ onCreated, triggerClassName }) {
             maxLength={3000}
           />
           <p className="text-right text-xs text-[var(--muted)]">{content.length}/3000</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="post-phone">Phone Number (Optional)</Label>
+          <Input
+            id="post-phone"
+            type="tel"
+            value={phoneNumber}
+            onChange={(event) => setPhoneNumber(event.target.value)}
+            placeholder="Enter your phone number"
+            maxLength={20}
+          />
         </div>
 
         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--panel)]/60 p-3">
