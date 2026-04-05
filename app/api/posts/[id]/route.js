@@ -13,7 +13,7 @@ import {
 } from "@/lib/db/social-queries";
 import { fail, ok } from "@/lib/http/response";
 import { getUrgencyFromSimilarCount } from "@/lib/processing/mock";
-import { extractStructuredEntities } from "@/lib/processing/nlp";
+import { extractStructuredEntitiesWithLlm } from "@/lib/processing/llm";
 import { formatApiError } from "@/lib/utils";
 import { updatePostSchema } from "@/lib/validation/content";
 
@@ -65,7 +65,7 @@ export async function PATCH(request, { params }) {
     const processingMode = resolveProcessingMode(existingPost);
 
     if (processingMode === "mock") {
-      const { location, city, requestType, alertContent } = extractStructuredEntities(nextContent);
+      const { location, city, requestType, alertContent } = await extractStructuredEntitiesWithLlm(nextContent);
       const similarCountWithinHour = await countSimilarAlerts({
         city,
         requestType,

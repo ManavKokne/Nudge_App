@@ -11,7 +11,7 @@ The app behaves like a community feed (Twitter/Reddit inspired) while also actin
 - Icons: Lucide React
 - Validation: Zod
 - Auth: bcryptjs + signed JWT session in HTTP-only cookie
-- NLP (mock mode): compromise
+- LLM extraction (mock mode): Google Gemini via @google/generative-ai
 - Databases:
 	- Social/Ingestion DB: users, posts, comments
 	- Dashboard/Alerts DB: tweets
@@ -68,19 +68,22 @@ Processing behavior is controlled by PROCESSING_MODE with two strict modes.
 End-to-end flow:
 
 1. Persist raw post in social DB.
-2. Run NLP extraction on post text to infer:
+
+2. Run Gemini extraction on post text to infer:
+	 - city
 	 - location
 	 - request_type
-	 - cleaned alert content for dashboard row
-3. Query disaster DB tweets table for similar alerts in last 1 hour by same location + request_type.
+	 - normalized alert metadata for dashboard row
+
+3. Query disaster DB tweets table for similar alerts in last 1 hour by same city + request_type.
 4. Compute urgency score and semantic label:
 
 | Similar count in last 1h (before insert) | Score | Label |
 | --- | --- | --- |
 | 0 | 20 | non-urgent |
 | 1 | 40 | potentially urgent |
-| 2 | 60 | semi-urgent |
-| 3 | 80 | semi-urgent |
+| 2 | 60 | likely urgent |
+| 3 | 80 | likely urgent |
 | >= 4 | 100 | urgent |
 
 5. Insert processed alert into disaster tweets table.
@@ -96,7 +99,7 @@ Dashboard urgency compatibility rule:
 End-to-end flow:
 
 1. Persist raw post in social DB.
-2. Skip NLP extraction/scoring/disaster writes.
+2. Skip internal extraction/scoring/disaster writes.
 3. External ML pipeline is expected to consume raw social data and become the only writer to dashboard tweets.
 
 This one-writer model avoids duplicate or conflicting alert records.
@@ -111,6 +114,7 @@ Expected processed values:
 
 - content: Need immediate assistance in Bengaluru. Situation critical.
 - location: BTM Layout 2nd Stage, Bengaluru, Karnataka
+- city: Bengaluru
 - request_type: Medical
 - urgency_label: non-urgent
 - urgency_score: 20
@@ -173,6 +177,7 @@ Copy .env.example to .env.local and set:
 - DATABASE_URL_DISASTER
 - SESSION_SECRET
 - PROCESSING_MODE
+- GEMINI_API_KEY
 - AVATAR_COUNT
 
 Recommended defaults:
@@ -186,9 +191,14 @@ Recommended defaults:
 
 	 npm install
 
+	 # Existing checkouts migrating from older extraction build
+	 npm install @google/generative-ai
+
 2. Configure environment
 
 	 copy .env.example .env.local
+
+	 # Restart dev server after updating .env.local values
 
 3. Provision social schema
 
@@ -217,7 +227,7 @@ Recommended defaults:
 - components: UI primitives and feature components
 - lib/auth: auth/session guards
 - lib/db: DB clients and query modules
-- lib/processing: mock/ml processing pipeline and NLP extraction
+- lib/processing: mock/ml processing pipeline and Gemini extraction service
 - lib/validation: Zod schemas
 - db: SQL setup and compatibility docs
 - public: logos and avatar assets
