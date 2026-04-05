@@ -178,6 +178,8 @@ Copy .env.example to .env.local and set:
 - SESSION_SECRET
 - PROCESSING_MODE
 - GEMINI_API_KEY
+- GEMINI_MODEL (optional override, default: gemini-3-flash-preview)
+- GEMINI_TIMEOUT_MS (optional override, default: 60000)
 - AVATAR_COUNT
 
 Recommended defaults:
