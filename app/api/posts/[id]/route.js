@@ -65,38 +65,56 @@ export async function PATCH(request, { params }) {
     const processingMode = resolveProcessingMode(existingPost);
 
     if (processingMode === "mock") {
-      const { location, city, requestType, alertContent } = await extractStructuredEntitiesWithLlm(nextContent);
-      const similarCountWithinHour = await countSimilarAlerts({
-        city,
-        requestType,
-        excludeSourcePostId: id,
-      });
-      const { urgencyScore, urgencyLabel } = getUrgencyFromSimilarCount(similarCountWithinHour);
-      const dashboardUrgency = urgencyScore >= 100 ? "urgent" : "non-urgent";
-
-      await updateAlertBySourcePostId({
-        sourcePostId: id,
-        content: alertContent || nextContent,
-        location,
-        city,
-        requestType,
-        dashboardUrgency,
-        urgencyScore,
-        urgencyLabel,
-      });
+      const { location, city, requestType, isInformative, confidence, alertContent } =
+        await extractStructuredEntitiesWithLlm(nextContent);
 
       await updatePostContent({
         postId: id,
         content: nextContent,
       });
 
-      await updatePostProcessingMeta(id, {
-        location,
-        city,
-        requestType,
-        urgencyScore,
-        urgencyLabel,
-      });
+      if (!isInformative) {
+        await deleteAlertsBySourcePostId(id);
+
+        await updatePostProcessingMeta(id, {
+          location,
+          city,
+          requestType,
+          isInformative: false,
+          informativeConfidence: confidence,
+          urgencyScore: null,
+          urgencyLabel: null,
+        });
+      } else {
+        const similarCountWithinHour = await countSimilarAlerts({
+          city,
+          requestType,
+          excludeSourcePostId: id,
+        });
+        const { urgencyScore, urgencyLabel } = getUrgencyFromSimilarCount(similarCountWithinHour);
+        const dashboardUrgency = urgencyScore >= 100 ? "urgent" : "non-urgent";
+
+        await updateAlertBySourcePostId({
+          sourcePostId: id,
+          content: alertContent || nextContent,
+          location,
+          city,
+          requestType,
+          dashboardUrgency,
+          urgencyScore,
+          urgencyLabel,
+        });
+
+        await updatePostProcessingMeta(id, {
+          location,
+          city,
+          requestType,
+          isInformative: true,
+          informativeConfidence: confidence,
+          urgencyScore,
+          urgencyLabel,
+        });
+      }
     } else {
       await updatePostContent({
         postId: id,

@@ -73,10 +73,16 @@ End-to-end flow:
 	 - city
 	 - location
 	 - request_type
+	 - is_informative
+	 - confidence (optional)
 	 - normalized alert metadata for dashboard row
 
-3. Query disaster DB tweets table for similar alerts in last 1 hour by same city + request_type.
-4. Compute urgency score and semantic label:
+3. Apply informative gate:
+	 - if is_informative=false, skip scoring and skip dashboard/tweets insert.
+	 - if is_informative=true, continue through scoring and dashboard insertion.
+
+4. Query disaster DB tweets table for similar alerts in last 1 hour by same city + request_type.
+5. Compute urgency score and semantic label:
 
 | Similar count in last 1h (before insert) | Score | Label |
 | --- | --- | --- |
@@ -86,8 +92,8 @@ End-to-end flow:
 | 3 | 80 | likely urgent |
 | >= 4 | 100 | urgent |
 
-5. Insert processed alert into disaster tweets table.
-6. Store extracted metadata and score back into social posts table for traceability.
+6. Insert processed alert into disaster tweets table.
+7. Store extracted metadata and score back into social posts table for traceability.
 
 Dashboard urgency compatibility rule:
 
@@ -101,6 +107,10 @@ End-to-end flow:
 1. Persist raw post in social DB.
 2. Skip internal extraction/scoring/disaster writes.
 3. External ML pipeline is expected to consume raw social data and become the only writer to dashboard tweets.
+
+SOS behavior:
+
+- SOS submissions are always treated as informative and bypass the non-informative filter.
 
 This one-writer model avoids duplicate or conflicting alert records.
 
@@ -157,7 +167,8 @@ Main tables:
 	- id, email, password_hash, avatar_url, created_at
 - posts
 	- id, user_id, content, processing_mode
-	- extracted_location, extracted_request_type
+	- extracted_location, extracted_city, extracted_request_type
+	- extracted_is_informative, extraction_confidence
 	- urgency_score, urgency_label
 	- upvotes, downvotes, created_at, updated_at
 - comments

@@ -119,6 +119,8 @@ export async function POST(request) {
       location: locationLabel,
       city,
       requestType,
+      isInformative: true,
+      informativeConfidence: 1,
       urgencyScore: SOS_URGENCY_SCORE,
       urgencyLabel: SOS_URGENCY_LABEL,
     });
