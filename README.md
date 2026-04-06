@@ -78,24 +78,25 @@ End-to-end flow:
 	 - normalized alert metadata for dashboard row
 
 3. Apply informative gate:
-	 - if is_informative=false, the linked dashboard row is deactivated/removed and old cluster urgency is recomputed.
-	 - if is_informative=true, the linked dashboard row is upserted and affected cluster urgency is recomputed.
+	 - if is_informative=false, the linked dashboard row is deactivated/removed.
+	 - if is_informative=true, the linked dashboard row is upserted and scored.
 
-4. Synchronously recompute urgency for all active informative alerts in affected cluster(s):
+4. Count similar active informative alerts in the last 1 hour for the same city + request_type:
 	 - cluster key: city + request_type
 	 - time window: last 1 hour
-	 - order: created_at ascending (deterministic tie-breaker by row id)
+	 - matching is case-insensitive
 	 - active filter (when columns exist): is_informative=true and is_closed=false
+	 - for edit paths, current source_post_id row is excluded from count before rescoring
 
-5. Cluster-position based urgency mapping:
+5. Similar-count based urgency mapping:
 
-| Position in cluster (after ordering) | Score | Label |
+| Similar count in last 1h (before upsert/update) | Score | Label |
 | --- | --- | --- |
-| 1 | 20 | non-urgent |
-| 2 | 40 | potentially urgent |
-| 3 | 60 | likely urgent |
-| 4 | 80 | likely urgent |
-| >= 5 | 100 | urgent |
+| 0 | 20 | non-urgent |
+| 1 | 40 | potentially urgent |
+| 2 | 60 | likely urgent |
+| 3 | 80 | likely urgent |
+| >= 4 | 100 | urgent |
 
 6. Store extracted metadata and final urgency back into social posts table for traceability.
 
@@ -118,7 +119,9 @@ SOS behavior:
 
 Post mutation behavior in mock mode:
 
-- Post edit and post delete operations trigger synchronous cluster recomputation so dashboard urgency stays consistent after reclassification or content changes.
+- Post edits rescore only the edited alert using the same 1-hour similar-count rule.
+- Post deletes remove the linked dashboard row (no cluster-wide backfill recomputation in demo mode).
+- When geocode_status exists on tweets, edit-driven writes reset it to pending and clear latitude/longitude for worker refresh.
 
 This one-writer model avoids duplicate or conflicting alert records.
 

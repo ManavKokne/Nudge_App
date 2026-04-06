@@ -9,7 +9,6 @@
 -- 4) request_type: one of request_type | category | type
 -- 5) urgency: urgency
 -- 6) created_at for 1-hour frequency window: one of created_at | timestamp | inserted_at
--- 7) id: one of id | tweet_id (required for deterministic sequential recompute updates)
 
 -- Optional but recommended:
 -- urgency_score INTEGER
@@ -17,14 +16,17 @@
 -- source_post_id UUID/TEXT
 -- is_informative BOOLEAN DEFAULT TRUE
 -- is_closed BOOLEAN DEFAULT FALSE
+-- geocode_status VARCHAR(20) DEFAULT 'pending'
+-- latitude/longitude (or lat/lon) numeric columns if geocoding worker persists coordinates
 
 -- Runtime behavior in mock mode:
--- - Only active informative rows are considered during cluster recomputation.
+-- - Scoring uses similar-count in the last 1 hour for city + request_type.
+-- - City/request_type matching is case-insensitive.
 -- - Active row filter is:
 --   COALESCE(is_informative, TRUE) = TRUE AND COALESCE(is_closed, FALSE) = FALSE
 --   (when those columns exist).
--- - For every mutation, the system recomputes urgency sequentially for all rows in
---   the affected cluster (city + request_type, last 1 hour, ordered by created_at ASC).
+-- - On edit-driven writes, geocode_status is reset to pending and coordinates are
+--   cleared (set to NULL) when those columns exist.
 
 -- Example compatible schema:
 -- CREATE TABLE public.tweets (
@@ -39,10 +41,13 @@
 --   source_post_id UUID,
 --   is_informative BOOLEAN NOT NULL DEFAULT TRUE,
 --   is_closed BOOLEAN NOT NULL DEFAULT FALSE,
+--   geocode_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+--   latitude DOUBLE PRECISION,
+--   longitude DOUBLE PRECISION,
 --   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 -- );
 
--- Suggested indexes for recomputation performance:
+-- Suggested indexes for mock scoring performance:
 -- CREATE INDEX IF NOT EXISTS idx_tweets_cluster_window
 --   ON public.tweets (city, request_type, created_at);
 --

@@ -1,7 +1,6 @@
 import { requireApiUser } from "@/lib/auth/guards";
 import {
-  deleteAlertsBySourcePostId,
-  recomputeClusterUrgency,
+  deleteAlertAndRecomputeClusterBySourcePostId,
   syncAlertClusterForPostMutation,
 } from "@/lib/db/disaster-queries";
 import {
@@ -141,12 +140,7 @@ export async function DELETE(_request, { params }) {
     const processingMode = resolveProcessingMode(existingPost);
 
     if (processingMode === "mock") {
-      await deleteAlertsBySourcePostId(id);
-
-      await recomputeClusterUrgency({
-        city: existingPost.extracted_city,
-        requestType: existingPost.extracted_request_type,
-      });
+      await deleteAlertAndRecomputeClusterBySourcePostId(id);
     }
 
     await deletePostById(id);
