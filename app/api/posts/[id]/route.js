@@ -1,8 +1,8 @@
 import { requireApiUser } from "@/lib/auth/guards";
 import {
-  countSimilarAlerts,
   deleteAlertsBySourcePostId,
-  updateAlertBySourcePostId,
+  recomputeClusterUrgency,
+  syncAlertClusterForPostMutation,
 } from "@/lib/db/disaster-queries";
 import {
   deletePostById,
@@ -12,7 +12,6 @@ import {
   updatePostProcessingMeta,
 } from "@/lib/db/social-queries";
 import { fail, ok } from "@/lib/http/response";
-import { getUrgencyFromSimilarCount } from "@/lib/processing/mock";
 import { extractStructuredEntitiesWithLlm } from "@/lib/processing/llm";
 import { formatApiError } from "@/lib/utils";
 import { updatePostSchema } from "@/lib/validation/content";
@@ -73,8 +72,18 @@ export async function PATCH(request, { params }) {
         content: nextContent,
       });
 
+      const syncResult = await syncAlertClusterForPostMutation({
+        sourcePostId: id,
+        content: alertContent || nextContent,
+        location,
+        city,
+        requestType,
+        isInformative,
+        oldCityHint: existingPost.extracted_city,
+        oldRequestTypeHint: existingPost.extracted_request_type,
+      });
+
       if (!isInformative) {
-        await deleteAlertsBySourcePostId(id);
 
         await updatePostProcessingMeta(id, {
           location,
@@ -86,24 +95,8 @@ export async function PATCH(request, { params }) {
           urgencyLabel: null,
         });
       } else {
-        const similarCountWithinHour = await countSimilarAlerts({
-          city,
-          requestType,
-          excludeSourcePostId: id,
-        });
-        const { urgencyScore, urgencyLabel } = getUrgencyFromSimilarCount(similarCountWithinHour);
-        const dashboardUrgency = urgencyScore >= 100 ? "urgent" : "non-urgent";
-
-        await updateAlertBySourcePostId({
-          sourcePostId: id,
-          content: alertContent || nextContent,
-          location,
-          city,
-          requestType,
-          dashboardUrgency,
-          urgencyScore,
-          urgencyLabel,
-        });
+        const urgencyScore = syncResult.focus?.urgencyScore ?? 20;
+        const urgencyLabel = syncResult.focus?.urgencyLabel ?? "non-urgent";
 
         await updatePostProcessingMeta(id, {
           location,
@@ -149,6 +142,11 @@ export async function DELETE(_request, { params }) {
 
     if (processingMode === "mock") {
       await deleteAlertsBySourcePostId(id);
+
+      await recomputeClusterUrgency({
+        city: existingPost.extracted_city,
+        requestType: existingPost.extracted_request_type,
+      });
     }
 
     await deletePostById(id);

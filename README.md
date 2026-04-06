@@ -78,22 +78,26 @@ End-to-end flow:
 	 - normalized alert metadata for dashboard row
 
 3. Apply informative gate:
-	 - if is_informative=false, skip scoring and skip dashboard/tweets insert.
-	 - if is_informative=true, continue through scoring and dashboard insertion.
+	 - if is_informative=false, the linked dashboard row is deactivated/removed and old cluster urgency is recomputed.
+	 - if is_informative=true, the linked dashboard row is upserted and affected cluster urgency is recomputed.
 
-4. Query disaster DB tweets table for similar alerts in last 1 hour by same city + request_type.
-5. Compute urgency score and semantic label:
+4. Synchronously recompute urgency for all active informative alerts in affected cluster(s):
+	 - cluster key: city + request_type
+	 - time window: last 1 hour
+	 - order: created_at ascending (deterministic tie-breaker by row id)
+	 - active filter (when columns exist): is_informative=true and is_closed=false
 
-| Similar count in last 1h (before insert) | Score | Label |
+5. Cluster-position based urgency mapping:
+
+| Position in cluster (after ordering) | Score | Label |
 | --- | --- | --- |
-| 0 | 20 | non-urgent |
-| 1 | 40 | potentially urgent |
-| 2 | 60 | likely urgent |
-| 3 | 80 | likely urgent |
-| >= 4 | 100 | urgent |
+| 1 | 20 | non-urgent |
+| 2 | 40 | potentially urgent |
+| 3 | 60 | likely urgent |
+| 4 | 80 | likely urgent |
+| >= 5 | 100 | urgent |
 
-6. Insert processed alert into disaster tweets table.
-7. Store extracted metadata and score back into social posts table for traceability.
+6. Store extracted metadata and final urgency back into social posts table for traceability.
 
 Dashboard urgency compatibility rule:
 
@@ -111,6 +115,10 @@ End-to-end flow:
 SOS behavior:
 
 - SOS submissions are always treated as informative and bypass the non-informative filter.
+
+Post mutation behavior in mock mode:
+
+- Post edit and post delete operations trigger synchronous cluster recomputation so dashboard urgency stays consistent after reclassification or content changes.
 
 This one-writer model avoids duplicate or conflicting alert records.
 
@@ -220,6 +228,39 @@ Recommended defaults:
 4. Ensure disaster tweets table compatibility
 
 	 validate columns using db/disaster_schema_expectations.sql guidance
+
+### PostgreSQL Migration Snippets
+
+Use these if your databases were created before informative gating and cluster recomputation changes.
+
+Social DB (`posts` table):
+
+```sql
+ALTER TABLE public.posts
+	ADD COLUMN IF NOT EXISTS extracted_is_informative BOOLEAN,
+	ADD COLUMN IF NOT EXISTS extraction_confidence DOUBLE PRECISION;
+```
+
+Disaster DB (`tweets` table):
+
+```sql
+ALTER TABLE public.tweets
+	ADD COLUMN IF NOT EXISTS source_post_id UUID,
+	ADD COLUMN IF NOT EXISTS urgency_score INTEGER,
+	ADD COLUMN IF NOT EXISTS urgency_label TEXT,
+	ADD COLUMN IF NOT EXISTS is_informative BOOLEAN NOT NULL DEFAULT TRUE,
+	ADD COLUMN IF NOT EXISTS is_closed BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_tweets_source_post_id
+	ON public.tweets (source_post_id);
+
+CREATE INDEX IF NOT EXISTS idx_tweets_cluster_window
+	ON public.tweets (city, request_type, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_tweets_active_cluster_window
+	ON public.tweets (city, request_type, created_at)
+	WHERE is_informative = TRUE AND is_closed = FALSE;
+```
 
 5. Run development server
 
