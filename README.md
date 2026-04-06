@@ -11,7 +11,7 @@ The app behaves like a community feed (Twitter/Reddit inspired) while also actin
 - Icons: Lucide React
 - Validation: Zod
 - Auth: bcryptjs + signed JWT session in HTTP-only cookie
-- NLP (mock mode): compromise
+- LLM extraction (mock mode): Google Gemini via @google/generative-ai
 - Databases:
 	- Social/Ingestion DB: users, posts, comments
 	- Dashboard/Alerts DB: tweets
@@ -68,23 +68,37 @@ Processing behavior is controlled by PROCESSING_MODE with two strict modes.
 End-to-end flow:
 
 1. Persist raw post in social DB.
-2. Run NLP extraction on post text to infer:
+
+2. Run Gemini extraction on post text to infer:
+	 - city
 	 - location
 	 - request_type
-	 - cleaned alert content for dashboard row
-3. Query disaster DB tweets table for similar alerts in last 1 hour by same location + request_type.
-4. Compute urgency score and semantic label:
+	 - is_informative
+	 - confidence (optional)
+	 - normalized alert metadata for dashboard row
 
-| Similar count in last 1h (before insert) | Score | Label |
+3. Apply informative gate:
+	 - if is_informative=false, the linked dashboard row is deactivated/removed.
+	 - if is_informative=true, the linked dashboard row is upserted and scored.
+
+4. Count similar active informative alerts in the last 1 hour for the same city + request_type:
+	 - cluster key: city + request_type
+	 - time window: last 1 hour
+	 - matching is case-insensitive
+	 - active filter (when columns exist): is_informative=true and is_closed=false
+	 - for edit paths, current source_post_id row is excluded from count before rescoring
+
+5. Similar-count based urgency mapping:
+
+| Similar count in last 1h (before upsert/update) | Score | Label |
 | --- | --- | --- |
 | 0 | 20 | non-urgent |
 | 1 | 40 | potentially urgent |
-| 2 | 60 | semi-urgent |
-| 3 | 80 | semi-urgent |
+| 2 | 60 | likely urgent |
+| 3 | 80 | likely urgent |
 | >= 4 | 100 | urgent |
 
-5. Insert processed alert into disaster tweets table.
-6. Store extracted metadata and score back into social posts table for traceability.
+6. Store extracted metadata and final urgency back into social posts table for traceability.
 
 Dashboard urgency compatibility rule:
 
@@ -96,8 +110,18 @@ Dashboard urgency compatibility rule:
 End-to-end flow:
 
 1. Persist raw post in social DB.
-2. Skip NLP extraction/scoring/disaster writes.
+2. Skip internal extraction/scoring/disaster writes.
 3. External ML pipeline is expected to consume raw social data and become the only writer to dashboard tweets.
+
+SOS behavior:
+
+- SOS submissions are always treated as informative and bypass the non-informative filter.
+
+Post mutation behavior in mock mode:
+
+- Post edits rescore only the edited alert using the same 1-hour similar-count rule.
+- Post deletes remove the linked dashboard row (no cluster-wide backfill recomputation in demo mode).
+- When geocode_status exists on tweets, edit-driven writes reset it to pending and clear latitude/longitude for worker refresh.
 
 This one-writer model avoids duplicate or conflicting alert records.
 
@@ -111,6 +135,7 @@ Expected processed values:
 
 - content: Need immediate assistance in Bengaluru. Situation critical.
 - location: BTM Layout 2nd Stage, Bengaluru, Karnataka
+- city: Bengaluru
 - request_type: Medical
 - urgency_label: non-urgent
 - urgency_score: 20
@@ -153,7 +178,8 @@ Main tables:
 	- id, email, password_hash, avatar_url, created_at
 - posts
 	- id, user_id, content, processing_mode
-	- extracted_location, extracted_request_type
+	- extracted_location, extracted_city, extracted_request_type
+	- extracted_is_informative, extraction_confidence
 	- urgency_score, urgency_label
 	- upvotes, downvotes, created_at, updated_at
 - comments
@@ -173,6 +199,9 @@ Copy .env.example to .env.local and set:
 - DATABASE_URL_DISASTER
 - SESSION_SECRET
 - PROCESSING_MODE
+- GEMINI_API_KEY
+- GEMINI_MODEL (optional override, default: gemini-3-flash-preview)
+- GEMINI_TIMEOUT_MS (optional override, default: 60000)
 - AVATAR_COUNT
 
 Recommended defaults:
@@ -186,9 +215,14 @@ Recommended defaults:
 
 	 npm install
 
+	 # Existing checkouts migrating from older extraction build
+	 npm install @google/generative-ai
+
 2. Configure environment
 
 	 copy .env.example .env.local
+
+	 # Restart dev server after updating .env.local values
 
 3. Provision social schema
 
@@ -197,6 +231,39 @@ Recommended defaults:
 4. Ensure disaster tweets table compatibility
 
 	 validate columns using db/disaster_schema_expectations.sql guidance
+
+### PostgreSQL Migration Snippets
+
+Use these if your databases were created before informative gating and cluster recomputation changes.
+
+Social DB (`posts` table):
+
+```sql
+ALTER TABLE public.posts
+	ADD COLUMN IF NOT EXISTS extracted_is_informative BOOLEAN,
+	ADD COLUMN IF NOT EXISTS extraction_confidence DOUBLE PRECISION;
+```
+
+Disaster DB (`tweets` table):
+
+```sql
+ALTER TABLE public.tweets
+	ADD COLUMN IF NOT EXISTS source_post_id UUID,
+	ADD COLUMN IF NOT EXISTS urgency_score INTEGER,
+	ADD COLUMN IF NOT EXISTS urgency_label TEXT,
+	ADD COLUMN IF NOT EXISTS is_informative BOOLEAN NOT NULL DEFAULT TRUE,
+	ADD COLUMN IF NOT EXISTS is_closed BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_tweets_source_post_id
+	ON public.tweets (source_post_id);
+
+CREATE INDEX IF NOT EXISTS idx_tweets_cluster_window
+	ON public.tweets (city, request_type, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_tweets_active_cluster_window
+	ON public.tweets (city, request_type, created_at)
+	WHERE is_informative = TRUE AND is_closed = FALSE;
+```
 
 5. Run development server
 
@@ -217,7 +284,7 @@ Recommended defaults:
 - components: UI primitives and feature components
 - lib/auth: auth/session guards
 - lib/db: DB clients and query modules
-- lib/processing: mock/ml processing pipeline and NLP extraction
+- lib/processing: mock/ml processing pipeline and Gemini extraction service
 - lib/validation: Zod schemas
 - db: SQL setup and compatibility docs
 - public: logos and avatar assets

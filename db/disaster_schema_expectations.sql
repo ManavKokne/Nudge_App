@@ -5,7 +5,7 @@
 -- Required logical fields:
 -- 1) content: one of content | tweet | text | body
 -- 2) location: location
--- 3) city: city (mock frequency scoring now checks city + request_type in last 1 hour)
+-- 3) city: city (or location fallback for clustering)
 -- 4) request_type: one of request_type | category | type
 -- 5) urgency: urgency
 -- 6) created_at for 1-hour frequency window: one of created_at | timestamp | inserted_at
@@ -14,6 +14,19 @@
 -- urgency_score INTEGER
 -- urgency_label TEXT
 -- source_post_id UUID/TEXT
+-- is_informative BOOLEAN DEFAULT TRUE
+-- is_closed BOOLEAN DEFAULT FALSE
+-- geocode_status VARCHAR(20) DEFAULT 'pending'
+-- latitude/longitude (or lat/lon) numeric columns if geocoding worker persists coordinates
+
+-- Runtime behavior in mock mode:
+-- - Scoring uses similar-count in the last 1 hour for city + request_type.
+-- - City/request_type matching is case-insensitive.
+-- - Active row filter is:
+--   COALESCE(is_informative, TRUE) = TRUE AND COALESCE(is_closed, FALSE) = FALSE
+--   (when those columns exist).
+-- - On edit-driven writes, geocode_status is reset to pending and coordinates are
+--   cleared (set to NULL) when those columns exist.
 
 -- Example compatible schema:
 -- CREATE TABLE public.tweets (
@@ -26,5 +39,21 @@
 --   urgency_score INTEGER,
 --   urgency_label TEXT,
 --   source_post_id UUID,
+--   is_informative BOOLEAN NOT NULL DEFAULT TRUE,
+--   is_closed BOOLEAN NOT NULL DEFAULT FALSE,
+--   geocode_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+--   latitude DOUBLE PRECISION,
+--   longitude DOUBLE PRECISION,
 --   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 -- );
+
+-- Suggested indexes for mock scoring performance:
+-- CREATE INDEX IF NOT EXISTS idx_tweets_cluster_window
+--   ON public.tweets (city, request_type, created_at);
+--
+-- CREATE INDEX IF NOT EXISTS idx_tweets_source_post
+--   ON public.tweets (source_post_id);
+--
+-- CREATE INDEX IF NOT EXISTS idx_tweets_active_cluster_window
+--   ON public.tweets (city, request_type, created_at)
+--   WHERE is_informative = TRUE AND is_closed = FALSE;

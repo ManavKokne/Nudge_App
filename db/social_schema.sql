@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS posts (
   extracted_location TEXT,
   extracted_city TEXT,
   extracted_request_type TEXT,
+  extracted_is_informative BOOLEAN NOT NULL DEFAULT FALSE,
+  extraction_confidence DOUBLE PRECISION,
   urgency_score INTEGER,
   urgency_label TEXT,
   upvotes INTEGER NOT NULL DEFAULT 0,
