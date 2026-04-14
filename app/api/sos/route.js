@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { requireApiUser } from "@/lib/auth/guards";
 import { PROCESSING_MODE, SOS_REQUEST_TYPE_OPTIONS } from "@/lib/constants";
-import { insertAlertFromPost } from "@/lib/db/disaster-queries";
+import { syncAlertClusterForPostMutation } from "@/lib/db/disaster-queries";
 import {
   createPost,
   getLatestSosPostByUser,
   getPostById,
+  syncSocialUrgencyForRecomputedClusters,
   updatePostProcessingMeta,
 } from "@/lib/db/social-queries";
 import { fail, ok } from "@/lib/http/response";
@@ -115,30 +116,38 @@ export async function POST(request) {
       phoneNumber,
     });
 
+    let insertedAlert = null;
+    let urgencyScore = SOS_URGENCY_SCORE;
+    let urgencyLabel = SOS_URGENCY_LABEL;
+    let recomputedClusters = [];
+
+    if (processingMode === "mock") {
+      const syncResult = await syncAlertClusterForPostMutation({
+        sourcePostId: createdPost.id,
+        content,
+        location: locationLabel,
+        city,
+        requestType,
+        isInformative: true,
+      });
+
+      insertedAlert = syncResult.alert;
+      urgencyScore = syncResult.focus?.urgencyScore ?? SOS_URGENCY_SCORE;
+      urgencyLabel = syncResult.focus?.urgencyLabel ?? SOS_URGENCY_LABEL;
+      recomputedClusters = syncResult.recomputedClusters || [];
+    }
+
     await updatePostProcessingMeta(createdPost.id, {
       location: locationLabel,
       city,
       requestType,
       isInformative: true,
       informativeConfidence: 1,
-      urgencyScore: SOS_URGENCY_SCORE,
-      urgencyLabel: SOS_URGENCY_LABEL,
+      urgencyScore,
+      urgencyLabel,
     });
 
-    let insertedAlert = null;
-
-    if (processingMode === "mock") {
-      insertedAlert = await insertAlertFromPost({
-        content,
-        location: locationLabel,
-        city,
-        requestType,
-        dashboardUrgency: SOS_URGENCY_LABEL,
-        urgencyScore: SOS_URGENCY_SCORE,
-        urgencyLabel: SOS_URGENCY_LABEL,
-        sourcePostId: createdPost.id,
-      });
-    }
+    await syncSocialUrgencyForRecomputedClusters(recomputedClusters);
 
     const hydratedPost = await getPostById(createdPost.id);
 
@@ -151,8 +160,8 @@ export async function POST(request) {
           city,
           requestType,
           phoneNumber,
-          urgencyScore: SOS_URGENCY_SCORE,
-          urgencyLabel: SOS_URGENCY_LABEL,
+          urgencyScore,
+          urgencyLabel,
           insertedAlert,
         },
         message:
