@@ -7,6 +7,7 @@ import {
   deletePostById,
   getPostById,
   listCommentsByPost,
+  syncSocialUrgencyForRecomputedClusters,
   updatePostContent,
   updatePostProcessingMeta,
 } from "@/lib/db/social-queries";
@@ -107,6 +108,8 @@ export async function PATCH(request, { params }) {
           urgencyLabel,
         });
       }
+
+      await syncSocialUrgencyForRecomputedClusters(syncResult.recomputedClusters);
     } else {
       await updatePostContent({
         postId: id,
@@ -138,12 +141,18 @@ export async function DELETE(_request, { params }) {
     }
 
     const processingMode = resolveProcessingMode(existingPost);
+    let recomputeResult = null;
 
     if (processingMode === "mock") {
-      await deleteAlertAndRecomputeClusterBySourcePostId(id);
+      const alertSync = await deleteAlertAndRecomputeClusterBySourcePostId(id);
+      recomputeResult = alertSync?.recomputeResult || null;
     }
 
     await deletePostById(id);
+
+    if (processingMode === "mock") {
+      await syncSocialUrgencyForRecomputedClusters(recomputeResult ? [recomputeResult] : []);
+    }
 
     return ok({ message: "Post deleted" });
   } catch (error) {

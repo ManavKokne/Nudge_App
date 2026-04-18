@@ -26,6 +26,22 @@ async function requestFeedback(postId, direction) {
   return payload.data.feedback;
 }
 
+async function requestPosts() {
+  const response = await fetch("/api/posts", {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok || !payload?.success || !Array.isArray(payload?.data?.posts)) {
+    throw new Error(payload?.error || "Could not refresh posts right now.");
+  }
+
+  return payload.data.posts;
+}
+
 export function FeedClient({ initialPosts }) {
   const [posts, setPosts] = useState(initialPosts || []);
   const [processingHint, setProcessingHint] = useState("");
@@ -36,8 +52,20 @@ export function FeedClient({ initialPosts }) {
     return { urgent, potential };
   }, [posts]);
 
+  async function refreshFeedInBackground() {
+    try {
+      const latestPosts = await requestPosts();
+      setPosts(latestPosts);
+    } catch (error) {
+      const message = error?.message || "Could not refresh posts right now.";
+      setProcessingHint((previous) => previous || message);
+    }
+  }
+
   function handleCreated(post, processing, processingError) {
     setPosts((previous) => [post, ...previous]);
+
+    void refreshFeedInBackground();
 
     if (processingError) {
       setProcessingHint(`Post saved in social DB. Dashboard load warning: ${processingError}`);
@@ -60,6 +88,8 @@ export function FeedClient({ initialPosts }) {
     if (data?.post) {
       setPosts((previous) => [data.post, ...previous]);
     }
+
+    void refreshFeedInBackground();
 
     setProcessingHint(data?.message || "Emergency SOS alert submitted successfully.");
   }
