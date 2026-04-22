@@ -129,11 +129,17 @@ export async function POST(request) {
         city,
         requestType,
         isInformative: true,
+        forceSourceUrgency: {
+          urgencyScore: SOS_URGENCY_SCORE,
+          urgencyLabel: SOS_URGENCY_LABEL,
+          dashboardUrgency: "urgent",
+        },
       });
 
       insertedAlert = syncResult.alert;
-      urgencyScore = syncResult.focus?.urgencyScore ?? SOS_URGENCY_SCORE;
-      urgencyLabel = syncResult.focus?.urgencyLabel ?? SOS_URGENCY_LABEL;
+      // SOS posts are intentionally pinned to maximum urgency.
+      urgencyScore = SOS_URGENCY_SCORE;
+      urgencyLabel = SOS_URGENCY_LABEL;
       recomputedClusters = syncResult.recomputedClusters || [];
     }
 
